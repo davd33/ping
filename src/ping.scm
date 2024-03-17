@@ -23,7 +23,7 @@
 (define-record-type ball
   (make-ball pos radius direction-x direction-y)
   ball?
-  (pos ball-pos)
+  (pos ball-pos set-ball-pos!)
   (radius ball-radius)
   (direction-x ball-direction-x set-ball-direction-x!)
   (direction-y ball-direction-y set-ball-direction-y!))
@@ -59,8 +59,6 @@
 		   (or (on-collision o points-inside res)
 		       res)))
 	  #f obstacles))
-  (define (compute-pos pos direction dt speed)
-    (direction pos (* speed dt)))
   (let ((x (vec2-x (ball-pos ball)))
 	(y (vec2-y (ball-pos ball)))
 	(dx (ball-direction-x ball))
@@ -91,9 +89,7 @@
 				      (member #:B points-inside)
 				      ;; bounce off bottom side of obstacle
 				      (bounce-off-obstacle y dy r 0.0 (rect-bottom obstacle))))))
-	 (bounce-off-walls y dy r 0 h)))
-    (set-vec2-x! (ball-pos ball) (compute-pos x dx dt 100))
-    (set-vec2-y! (ball-pos ball) (compute-pos y dy dt 100))))
+	 (ball-direction-y ball)))))
 
 (define (tie-mouse-x rect)
   "Tie a RECT to the mouse on the X axis."
@@ -109,7 +105,10 @@
 	     10.0 + +))
 
 (define ping-racket
-  (rect 0.0 0.0 100.0 5.0))
+  (rect 0.0 5.0 100.0 5.0))
+
+(define ping-racket2
+  (rect 0.0 (- h 10.0) 100.0 5.0))
 
 (define (make-ball-canvas)
   (make-canvas
@@ -118,27 +117,59 @@
      (with-style ((fill-color red))
 		 (fill ball)))))
 
-(define (make-racket-canvas)
+(define (make-racket-canvas racket)
   (make-canvas
-   (let ((racket (rounded-rectangle (vec2 (rect-x ping-racket)
-					  (rect-y ping-racket))
-				    (rect-width ping-racket)
-				    (rect-height ping-racket))))
+   (let ((r (rounded-rectangle (vec2 (rect-x racket)
+				     (rect-y racket))
+			       (rect-width racket)
+			       (rect-height racket))))
      (with-style ((fill-color white))
-		 (fill racket)))))
+		 (fill r)))))
 
 (define follow #t)
+
+(define game-over #f)
 
 ;;; GAME FUNCTIONS
 (define (draw alpha)
   (draw-canvas (make-ball-canvas))
-  (draw-canvas (make-racket-canvas)))
+  (draw-canvas (make-racket-canvas ping-racket))
+  (draw-canvas (make-racket-canvas ping-racket2))
+  (when game-over
+    (draw-text "     You Lost!\nType R to try again!"
+	       (centroid (- w 200) h)
+	       #:color white)))
 
 (define (updates dt)
-  (bounce-ball ping-ball dt (list ping-racket))
-  (when follow (tie-mouse-x ping-racket)))
+  (define (compute-pos pos direction dt speed)
+    (direction pos (* speed dt)))
+
+  ;; bounce the ball off the walls and the two rackets
+  (bounce-ball ping-ball dt (list ping-racket ping-racket2))
+  (when follow (tie-mouse-x ping-racket))
+  (when follow (tie-mouse-x ping-racket2))
+  
+  ;; move the ball
+  (let ((x (vec2-x (ball-pos ping-ball)))
+	(y (vec2-y (ball-pos ping-ball)))
+	(dx (ball-direction-x ping-ball))
+	(dy (ball-direction-y ping-ball))
+	(speed 200))
+    (set-vec2-x! (ball-pos ping-ball) (compute-pos x dx dt speed))
+    (set-vec2-y! (ball-pos ping-ball) (compute-pos y dy dt speed)))
+
+  ;; check if the ball is out of the screen
+  (let ((ball-pos (ball-pos ping-ball))
+	(screen-rect (rect 0.0 0.0 w h)))
+    (when (not (rect-contains? screen-rect (vec2-x ball-pos) (vec2-y ball-pos)))
+      (set! game-over #t))))
 
 (define (key-press key modifiers repeat?)
+  (when (eq? key 'r)
+    (set! game-over #f)
+    (set-ball-pos! ping-ball (centroid w h))
+    (set-ball-direction-x! ping-ball +)
+    (set-ball-direction-y! ping-ball +))
   (when (eq? key 'q)
     (abort-game)))
 
@@ -155,6 +186,7 @@
 			  (set! follow (not follow)))
 	  #:draw (lambda (alpha)
 		   (draw alpha))
+	  #:clear-color black
 	  #:window-title "PING"
 	  #:window-width w
 	  #:window-height h)
