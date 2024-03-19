@@ -2,6 +2,7 @@
 	     (srfi srfi-9)
 	     (system repl coop-server)
 	     (chickadee)
+	     (chickadee math)
 	     (chickadee math rect)
 	     (chickadee math vector)
 	     (chickadee graphics text)
@@ -61,15 +62,20 @@
 
 (define game-over #f)
 
+(define print-snippets #f)
+
 ;;; GAME FUNCTIONS
 (define (draw alpha)
-  (draw-canvas (make-ball-canvas))
-  (draw-canvas (make-racket-canvas ping-racket))
-  (draw-canvas (make-racket-canvas ping-racket2))
-  (when game-over
-    (draw-text "     You Lost!\nType R to try again!"
-	       (centroid (- w 200) h)
-	       #:color white)))
+  (if (not print-snippets)
+      (begin
+	(draw-canvas (make-ball-canvas))
+	(draw-canvas (make-racket-canvas ping-racket))
+	(draw-canvas (make-racket-canvas ping-racket2))
+	(when game-over
+	  (draw-text "     You Lost!\nType R to try again!"
+		     (centroid (- w 200) h)
+		     #:color white)))
+      (snippets w h)))
 
 (define (updates dt)
   (define (compute-pos pos direction dt speed)
@@ -96,6 +102,8 @@
       (set! game-over #t))))
 
 (define (key-press key modifiers repeat?)
+  (when (eq? key 's)
+    (set! print-snippets (not print-snippets)))
   (when (eq? key 'r)
     (set! game-over #f)
     (set-ball-pos! ping-ball (centroid w h))
