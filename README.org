@@ -1,3 +1,13 @@
 #+TITLE: ping
 
 An fun pong game written in [[https://www.gnu.org/software/guile/][Guile Scheme]] and [[https://dthompson.us/projects/chickadee.html][Chickadee]].
+
+* TODOs
+
+** Add some physics: the frog must fall 
+
+** Create a map from Tiled and load it and display it on screen
+
+** Create tool for setting up collision rectangles on the map
+
+** Manage collisions with loaded collisions and the frog moving
